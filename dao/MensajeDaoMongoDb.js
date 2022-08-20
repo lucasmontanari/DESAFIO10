@@ -1,7 +1,7 @@
-import ContenedorMongoDb from "../contenedores/ContenedorMongoDb.js";
-import mongoose from "mongoose";
+const ContenedorMongoDb = require("../contenedores/ContenedorMongoDb.js")
+const mongoose = require("mongoose")
 
-export default class ContenedorMensajeMongoDb extends ContenedorMongoDb{
+module.exports = class ContenedorMensajeMongoDb extends ContenedorMongoDb{
     constructor(){
         const mensajeScherma = new mongoose.Schema({
             author: {type: Object},

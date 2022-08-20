@@ -1,34 +1,29 @@
-import express from 'express'
-const app = express()
-import path from 'path'
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-const __dirname = dirname(fileURLToPath(import.meta.url));
-import { Server } from 'socket.io'
-const expressServer = app.listen(8080, () => console.log('Servidor escuchando puerto 8080'))
-const io = new Server(expressServer)
-import rutas from './routes/rutas.js'
-import routes from './routes/ruteado.js'
-import { schema, normalize } from "normalizr";
-import 'dotenv/config'
+require('dotenv').config()
 const { DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, SESSION_SECRET } = process.env;
-import MongoStore from "connect-mongo";
-import cookieParser from "cookie-parser";
-import session from "express-session";
-import bcrypt from "bcrypt";
-import passport from 'passport';
-import passport_local from "passport-local"
-const LocalStrategy = passport_local.Strategy
-import Usuario from "./models.js";
-import mongoose from "mongoose"
+const mongoose = require("mongoose")
+mongoose.connect(`mongodb+srv://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}?retryWrites=true&w=majority`)
+console.log('Conexion establecida')
 
+const express = require("express");
+const app = express()
+const path = require('path')
+const { Server: IOServer } = require('socket.io')
+const expressServer = app.listen(8080, () => console.log('Servidor escuchando puerto 8080'))
+const io = new IOServer(expressServer)
+const bcrypt = require("bcrypt");
+const session = require("express-session");
+const passport = require("passport");
+const LocalStrategy = require("passport-local").Strategy;
+const rutas = require("./routes/rutas.js");
+const Usuario = require("./models");
 
-
-
-import ContenedorMensaje from './dao/MensajeDaoMongoDb.js'
+const ContenedorMensaje = require('./dao/MensajeDaoMongoDb.js')
 const mensajes = new ContenedorMensaje()
-import ContenedorProducto from './dao/ProductoDaoMongoDb.js'
+const ContenedorProducto = require('./dao/ProductoDaoMongoDb.js')
 const productos = new ContenedorProducto()
+
+app.set('views', path.join(__dirname,'./public'))
+app.set('view engine', 'ejs')
 
 let mensajesEnBaseDeDatos = []
 let productosEnBaseDeDatos = []
@@ -39,23 +34,23 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/public', express.static(`${__dirname}/public`))
 app.use(express.static(path.join(__dirname, './public')))
 
-app.use('/api/', rutas)
+let ultimoUsuario
+
+//PASSPORT
 
 app.use(
   session({
     secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    rolling: true, // Reinicia el tiempo de expiracion con cada request
     cookie: {
       httpOnly: false,
       secure: false,
       maxAge: 600000,
     },
+    rolling: true,
+    resave: false,
+    saveUninitialized: false,
   })
 );
-
-// PASSPORT
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -68,23 +63,26 @@ function isValidPassword(reqPassword, hashedPassword) {
   return bcrypt.compareSync(reqPassword, hashedPassword);
 }
 
-const registroStrategy = new LocalStrategy(
+const registerStrategy = new LocalStrategy(
   { passReqToCallback: true },
-  async (req, email, password, done) => {
+  async (req, username, password, done) => {
     try {
-      const usuarioExistente = await Usuario.findOne({ email });
+      ultimoUsuario = username
+      const existingUser = await Usuario.findOne({ username });
 
-      if (usuarioExistente) {
+      if (existingUser) {
         return done("User already exists", false);
       }
-      const nuevoUsuario = {
-        email: email,
+
+      const newUser = {
+        username: username,
         password: hashPassword(password),
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
+        email: req.body.email,
+        nombre: req.body.nombre,
+        apellido: req.body.apellido,
       };
 
-      const createdUser = await Usuario.create(nuevoUsuario);
+      const createdUser = await Usuario.create(newUser);
 
       return done(null, createdUser);
     } catch (err) {
@@ -94,41 +92,47 @@ const registroStrategy = new LocalStrategy(
   }
 );
 
-const loginStrategy = new LocalStrategy(async (email, password, done) => {
-  const user = await Usuario.findOne({ email });
-  if (!user || !isValidPassword(password, user.password)) {
-    return done("Invalid credentials", null);
-  }
 
-  return done(null, user);
-});
+const loginStrategy = new LocalStrategy(
+  async (username, password, done) => {
+    ultimoUsuario = username
+    const user = await Usuario.findOne({ username });
 
-passport.use("register", registroStrategy);
+    if (!user || !isValidPassword(password, user.password)) {
+      return done("Invalid credentials", null);
+    }
+
+    return done(null, user);
+  });
+
+passport.use("register", registerStrategy);
 passport.use("login", loginStrategy);
 
-passport.serializeUser((user, done) => {
-  done(null, user._id);
+passport.serializeUser((usuario, done) => {
+  done(null, usuario._id);
 });
 
 passport.deserializeUser((id, done) => {
-  User.findById(id, done);
+  Usuario.findById(id, done);
 });
 
-app.get("/register", routes.getSignup);
+app.get("/register", rutas.getSignup);
 
-app.post("/register",
-  passport.authenticate("register", { failureRedirect: "/failsignup" }),
-  routes.postSignup
+app.post(
+  "/register",
+  passport.authenticate("register", { failureRedirect: "/failregister" }),
+  rutas.postSignup
 );
 
-app.get("/failsignup", routes.getFailsignup);
+app.get("/failregister", rutas.getFailregister);
 
-app.get("/login", routes.getLogin);
-app.post("/login",
+app.get("/login", rutas.getLogin);
+app.post(
+  "/login",
   passport.authenticate("login", { failureRedirect: "/faillogin" }),
-  routes.postLogin
+  rutas.postLogin
 );
-app.get("/faillogin", routes.getFaillogin);
+app.get("/faillogin", rutas.getFaillogin);
 
 function checkAuth(req, res, next) {
   if (req.isAuthenticated()) {
@@ -138,21 +142,7 @@ function checkAuth(req, res, next) {
   }
 }
 
-app.get("/logout", routes.getLogout);
-
-
-
-
-//COOKIE
-let ultimoUsuario
-
-// function authMiddleware(req, res, next) {
-//   if (req.session.username) {
-//     next();
-//   } else {
-//     res.redirect("/login");
-//   }
-// }
+app.get("/logout", checkAuth, rutas.getLogout);
 
 app.get("/", checkAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "/public/home.html"));
@@ -163,61 +153,9 @@ app.get("/user", (req, res) => {
 });
 
 //  FAIL ROUTE
-app.get("*", routes.failRoute);
+app.get("*", rutas.failRoute);
 
-// function loginMiddleware(req, res, next) {
-//   if (req.session.username) {
-//     res.redirect("/");
-//   } else {
-//     next();
-//   }
-// }
-
-// app.get("/login", loginMiddleware, (req, res) => {
-//   res.sendFile(path.join(__dirname, "./public/login.html"));
-// });
-
-// app.post("/login", async (req, res) => {
-//   try {
-//     ultimoUsuario = req.body.username
-//     req.session.username = req.body.username;
-
-//     res.redirect("/");
-//   } catch (err) {
-//     res.json({ error: true, message: err });
-//   }
-// });
-
-
-// app.get("/logout", authMiddleware, async (req, res) => {
-//   req.session.destroy(err => {
-//     if (!err) {
-//       res.sendFile(path.join(__dirname, "./public/logout.html"));
-//     } else {
-//       res.json({ status: 'Logout error', body: err })
-//     }
-//   })
-// });
-
-
-
-//NORMALIZR
-
-const author = new schema.Entity("author", {}, { idAttribute: "userEmail" });
-
-const mensaje = new schema.Entity(
-  "mensaje",
-  { author: author },
-  { idAttribute: "_id" }
-);
-
-const schemaMensajes = new schema.Entity(
-  "mensajes",
-  {
-    mensajes: [mensaje],
-  },
-  { idAttribute: "id" }
-);
+//----------------------------------------
 
 
 io.on('connection', async socket => {
@@ -231,22 +169,14 @@ io.on('connection', async socket => {
   }
   try {
     mensajesEnBaseDeDatos = await mensajes.getAll()
-    const normalizedMensajes = normalize(
-      { id: "mensajes", mensajes: mensajesEnBaseDeDatos },
-      schemaMensajes
-    );
-    socket.emit('server:mensajes', normalizedMensajes)
+    socket.emit('server:mensajes', mensajesEnBaseDeDatos)
   } catch (error) {
     console.log(`Error al adquirir los mensajes ${error}`)
   }
   socket.on('cliente:mensaje', async nuevoMensaje => {
     await mensajes.save(nuevoMensaje)
     mensajesEnBaseDeDatos = await mensajes.getAll()
-    const normalizedMensajes = normalize(
-      { id: "mensajes", mensajes: mensajesEnBaseDeDatos },
-      schemaMensajes
-    );
-    io.emit('server:mensajes', normalizedMensajes)
+    io.emit('server:mensajes', mensajesEnBaseDeDatos)
   })
   socket.on('cliente:producto', async nuevoProducto => {
     await productos.save(nuevoProducto)

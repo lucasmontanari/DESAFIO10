@@ -53,51 +53,19 @@ formProductos.addEventListener('submit', event => {
 })
 
 //MENSAJES
-async function renderMensajes(mensajes, compresion) {
+async function renderMensajes(mensajes) {
     const response = await fetch('./mensajes.ejs')
     const plantilla = await response.text()
     document.querySelector('#chat').innerHTML = ''
-    document.querySelector('#tituloChat').innerHTML = `Chat ${compresion}%`
     mensajes.forEach(mensaje => {
-        const html = ejs.render(plantilla, mensaje._doc)
+        const html = ejs.render(plantilla, mensaje)
         document.querySelector('#chat').innerHTML += html
     })
 }
 
-//NORMALIZR
-const schemaAuthor = new normalizr.schema.Entity(
-    "author",
-    {},
-    { idAttribute: "userEmail" }
-);
 
-const schemaMensaje = new normalizr.schema.Entity(
-    "mensaje",
-    { author: schemaAuthor },
-    { idAttribute: "id" }
-);
-
-const schemaMensajes = new normalizr.schema.Entity(
-    "mensajes",
-    {
-        mensajes: [schemaMensaje],
-    },
-    { idAttribute: "id" }
-);
-
-
-socket.on('server:mensajes', mensajesNormalizados => {
-    const denormalizado = normalizr.denormalize(
-        mensajesNormalizados.result,
-        schemaMensajes,
-        mensajesNormalizados.entities
-    );
-
-    const compresion = Math.round(JSON.stringify(mensajesNormalizados).length / JSON.stringify(denormalizado).length * 100 - 100)
-    console.log(JSON.stringify(mensajesNormalizados).length)
-    console.log(JSON.stringify(denormalizado).length)
-    console.log(compresion)
-    renderMensajes(denormalizado.mensajes, compresion)
+socket.on('server:mensajes', mensajes => {
+    renderMensajes(mensajes)
 })
 
 formMensajes.addEventListener('submit', event => {

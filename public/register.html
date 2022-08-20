@@ -9,23 +9,24 @@
 
     <script src="./ejs.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/normalizr@3.6.1/dist/normalizr.browser.min.js"></script>
 
-    <title>Desafio 9</title>    
+    <title>Registro</title>    
 </head>
 <body>
     <main class="container">
-        <h1 class="display-1 text-center textColor my-3">Login</h1>
+        <h1 class="display-1 text-center textColor my-3">Registarse</h1>
         <br>
         <div class="row justify-content-center align-items-center">
             <div class="col-md-5">
                 <div class="container-sm border rounded p-3">
                     <form id="formLogin" action="/register" method="post">
                         <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input id="username" type="text" placeholder="Nombre de usuario" name="username" class="form-control">
                             <label class="form-label">Email</label>
-                            <input id="email" type="text" placeholder="Emai de usuario" name="email" class="form-control">
+                            <input id="email" type="text" placeholder="Email de usuario" name="email" class="form-control">
                             <label class="form-label">Contraseña</label>
-                            <input id="contraseña" type="password" placeholder="Contraseña" name="contraseña" class="form-control">
+                            <input id="password" type="password" placeholder="Contraseña" name="password" class="form-control">
                             <label class="form-label">Nombre</label>
                             <input id="nombre" type="text" placeholder="Nombre" name="nombre" class="form-control">
                             <label class="form-label">Apellido</label>

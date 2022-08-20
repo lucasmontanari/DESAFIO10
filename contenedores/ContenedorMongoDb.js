@@ -1,11 +1,7 @@
-import mongoose from "mongoose";
-import 'dotenv/config'
-const { DB_USER, DB_PASSWORD, DB_HOST, DB_NAME } = process.env;
+const mongoose = require("mongoose")
 
-await mongoose.connect(`mongodb+srv://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}?retryWrites=true&w=majority`)
-console.log('Conexion establecida')
 
-export default class ContenedorMongoDb{ //module.exports permite importar la clase en otro archivo usando require
+module.exports = class ContenedorMongoDb{ //module.exports permite importar la clase en otro archivo usando require
     constructor(colNombre, schema){
         this.colNombre = colNombre
         this.col = mongoose.model(colNombre, schema)

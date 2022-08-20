@@ -1,8 +1,9 @@
-import mongoose from "mongoose"
+const mongoose = require('mongoose');
  
-export default mongoose.model('Usuarios',{
-    email: String,
+module.exports = mongoose.model('Users',{
+    username: String,
     password: String,
-    firstName: String,
-    lastName: String
+    email: String,
+    nombre: String,
+    apellido: String
 });

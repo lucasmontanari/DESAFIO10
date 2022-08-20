@@ -11,22 +11,32 @@
 
     <script src="./ejs.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/normalizr@3.6.1/dist/normalizr.browser.min.js"></script>
 
-    <title>Logout</title>
+    <title>Error en ruta</title>
 </head>
 
 <body>
-    <main class="container">
-        <div class="row justify-content-center align-items-center">
-            <div class="col-9">
-                <h1 class="display-1 textColor" id="despedida">Hasta Luego</h1>
+    <br>
+    <div class="row justify-content-center align-items-center">
+        <div class="col-md-5">
+            <div class="container-sm border rounded p-3" style="background-color: red;color: white;">
+                <h1>No se encontro la Ruta</h1>
             </div>
-            <hr>
-            <button class="btn btn-warning my-5" onclick="volver()">VOLVER</button>
         </div>
-    </main>
-    <script src="./logout.js"></script>
+    </div>
+    <script>
+        function redireccionar(pagina) {
+            location.href = pagina;
+        }
+
+        function volver() {
+            console.log('volver');
+            setTimeout(redireccionar, 2000, '/');
+        }
+
+        volver();
+
+    </script>
 </body>
 
 </html>
